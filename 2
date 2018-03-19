@@ -17,8 +17,6 @@ ports = [
 myIndex = -1       # Index of this bridge within the IPs list
 myID = ''          # This bridge's ID is the MAC address
 rootData = ['', 0] # [root bridge's ID, hops to root bridge's]
-rootDataLock = threading.Lock()
-portsLock = threading.Lock()
 
 def getInfo():
   global myIndex
@@ -43,11 +41,6 @@ def createSocket():
 
 def sender():
   threading.Timer(3.0, sender).start()
-  rootID = rootData[0]
-  hopsToRoot = str(rootData[1])
-  BDPU = rootID+' '+hopsToRoot+' '+myID
-  # TODO remove
-  print 'BDPU: ',BDPU 
   numPorts = len(ports[myIndex])
   for outPortIndex in range(0, numPorts):
     outPortNum = ports[myIndex][outPortIndex][0]
@@ -55,9 +48,12 @@ def sender():
     if outPortNum != -1 and outPortLabel != 'bp':
       s = createSocket()
       try:
+        rootID = rootData[0]
+        hopsToRoot = str(rootData[1])
+        BDPU = rootID+' '+hopsToRoot+' '+myID
         outPortIP = IPs[outPortIndex]
         s.sendto(BDPU, (outPortIP, outPortNum))
-        #print "Message sent successfully to ", outPortNum
+        print "Message sent successfully to ", outPortNum
       except socket.error:
         print "Send failed"
       s.close()
@@ -65,39 +61,34 @@ def sender():
 def listener(listenerID):
   global rootData
   global ports
-  global rootDataLock
-  global portsLock
-  inPortNum = ports[myIndex][listenerID][0]
-  myIP = IPs[myIndex]
   while(1):
     s = createSocket()
+    inPortNum = ports[myIndex][listenerID][0]
+    myIP = IPs[myIndex]
     s.bind((myIP, inPortNum))
     recvData = s.recv(4096)
     recvList = recvData.split()
     # TODO remove print
-    #print 'list: ', recvList
+    print 'list: ', recvList
     s.close()
     # Calculations
     recvRoot = recvList[0]
     recvHops = recvList[1]
     if recvRoot < rootData[0]:
-      rootDataLock.acquire()
       rootData[0] = recvRoot
-      rootData[1] = int(recvHops)+1
-      rootDataLock.release()
+      rootData[1] = recvHops+1
+      #myRoot = received root, hops ++
       # set port label
-      portsLock.acquire()
-      ports[myIndex][listenerID][1] = 'rp'
+      ports[myThread][listenerID][1] = 'rp'
       if imFurthestFromRoot():
         numPorts = len(ports[myIndex])
         for outPortIndex in range(0, numPorts):
           ports[myIndex][outPortIndex][1] = 'bp'
-      portsLock.release()
 
 def imFurthestFromRoot():
   # check if all listener-bound ports are marked 'rp'
   numPorts = len(ports[myIndex])
-  for outPortIndex in range(0, numPorts):
+  for outPortIndex in range(0, numPorts))
     outPortNum = ports[myIndex][outPortIndex][0]
     outPortLabel = ports[myIndex][outPortIndex][1]
     if outPortNum != -1 and outPortLabel != 'rp':
@@ -109,7 +100,7 @@ if __name__ == '__main__':
   s = createSocket() 
   # Create a listener thread for each of my incoming ports
   numPorts = len(ports[myIndex])
-  for outPortIndex in range(0, numPorts):
+  for outPortIndex in range(0, numPorts)):
     if ports[myIndex][outPortIndex][0] != -1:
       start_new_thread(listener, (outPortIndex,))
   # Create a sender thread
